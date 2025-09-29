@@ -885,6 +885,8 @@ require('lazy').setup({
         'PmenuSel',
         'TelescopePrompt',
         'TelescopeResults',
+        'NeoTreeNormal',
+        'NeoTreeNormalNC',
       }
 
       for _, group in ipairs(transparent_groups) do
