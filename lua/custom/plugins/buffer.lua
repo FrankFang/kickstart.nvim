@@ -6,7 +6,7 @@ return {
     vim.opt.termguicolors = true
     local bufferline = require 'bufferline'
     vim.keymap.set('n', '<tab>', '<cmd>bn<CR>', { desc = 'Next Buffer' })
-    vim.keymap.set('n', '<S-tab>', '<cmd>bn<CR>', { desc = 'Previous Buffer' })
+    vim.keymap.set('n', '<s-tab>', '<cmd>bp<CR>', { desc = 'Previous Buffer' })
 
     bufferline.setup {
       options = {
