@@ -8,6 +8,8 @@ vim.g.maplocalleader = ' '
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.hve_nerd_font = true
 
+vim.opt.laststatus = 3
+
 vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,localoptions'
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -857,7 +859,7 @@ require('lazy').setup({
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      -- vim.cmd.colorscheme 'tokyonight-night'
       -- 全局透明背景配置
       local transparent_groups = {
         'Normal',
