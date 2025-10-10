@@ -9,8 +9,9 @@ vim.g.maplocalleader = ' '
 vim.g.hve_nerd_font = true
 
 vim.opt.laststatus = 3
+vim.o.expandtab = true
 
-vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,localoptions'
+vim.o.sessionoptions = 'buffers,curdir,folds,help,tabpages,winsize,winpos,localoptions,resize'
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
@@ -53,7 +54,11 @@ vim.o.signcolumn = 'yes'
 vim.o.updatetime = 250
 
 -- Decrease mapped sequence wait time
-vim.o.timeoutlen = 300
+vim.o.timeoutlen = 1000
+
+-- 为键码设置设置 50 毫秒的超时时间
+-- 这可以防止在终端中按 Esc 键后等待过久
+vim.opt.ttimeoutlen = 50
 
 -- Configure how new splits should be opened
 vim.o.splitright = true
@@ -136,6 +141,39 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     vim.hl.on_yank()
   end,
 })
+
+-- 设置会话文件路径（例如：~/.config/nvim/sessions/<cwd_name>.vim）
+local function get_session_path()
+  local cwd = vim.fn.getcwd() -- 获取当前工作目录
+  local cwd_name = cwd:gsub('/', '_') -- 将路径中的 "/" 替换为 "_"（避免文件名问题）
+  local session_dir = vim.fn.stdpath 'config' .. '/sessions' -- 会话保存目录（~/.config/nvim/sessions）
+  local session_path = session_dir .. '/' .. cwd_name .. '.vim' -- 完整路径
+  return session_path
+end
+
+-- 创建会话目录（如果不存在）
+vim.fn.mkdir(vim.fn.stdpath 'config' .. '/sessions', 'p')
+
+-- 自动保存会话（在退出 Neovim 时）
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  callback = function()
+    if vim.fn.argc() == 0 then
+      local session_path = get_session_path()
+      vim.cmd('mks! ' .. session_path) -- 强制保存会话
+    end
+  end,
+})
+
+-- 自动加载会话（在启动 Neovim 时）
+vim.api.nvim_create_autocmd('VimEnter', {
+  callback = function()
+    if vim.fn.argc() == 0 and vim.fn.filereadable(get_session_path()) == 1 then
+      vim.cmd('source ' .. get_session_path()) -- 加载会话
+    end
+  end,
+})
+
+require('colors.ff').setup()
 
 --
 --
@@ -287,7 +325,7 @@ require('lazy').setup({
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
-        { '<leader>q', group = 'Persistence' },
+        { '<leader>f', group = '[F]ind File' },
       },
     },
   },
@@ -300,6 +338,7 @@ require('lazy').setup({
   -- Use the `dependencies` key to specify the dependencies of a particular plugin
 
   { -- Fuzzy Finder (files, lsp, etc)
+
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
     dependencies = {
@@ -323,37 +362,20 @@ require('lazy').setup({
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
     },
     config = function()
-      -- Telescope is a fuzzy finder that comes with a lot of different things that
-      -- it can fuzzy find! It's more than just a "file finder", it can search
-      -- many different aspects of Neovim, your workspace, LSP, and more!
-      --
       -- The easiest way to use Telescope, is to start by doing something like:
       --  :Telescope help_tags
-      --
-      -- After running this command, a window will open up and you're able to
-      -- type in the prompt window. You'll see a list of `help_tags` options and
-      -- a corresponding preview of the help.
       --
       -- Two important keymaps to use while in Telescope are:
       --  - Insert mode: <c-/>
       --  - Normal mode: ?
       --
       -- This opens a window that shows you all of the keymaps for the current
-      -- Telescope picker. This is really useful to discover what Telescope can
-      -- do as well as how to actually do it!
+      -- Telescope picker.
 
       -- [[ Configure Telescope ]]
       -- See `:help telescope` and `:help telescope.setup()`
       require('telescope').setup {
-        -- You can put your default mappings / updates / etc. in here
-        --  All the info you're looking for is in `:help telescope.setup()`
-        --
-        -- defaults = {
-        --   mappings = {
-        --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-        --   },
-        -- },
-        -- pickers = {}
+        -- All the info you're looking for is in `:help telescope.setup()`
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -367,40 +389,20 @@ require('lazy').setup({
 
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
-      vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
+
+      vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('n', '<leader>:', '<cmd>Telescope command_history<cr>', { desc = 'Command History' })
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
-      vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
-      vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
-      function live_grep_wrapper(...)
-        local args = {
-          path_display = 'hidden',
-          wrap_results = true,
-          only_sort_text = true,
-          initial_mode = 'normal',
-          disable_coordinates = true,
-          grep_open_files = true,
-          default_text = '',
-          sorting_strategy = 'ascending',
-        }
-
-        for i, param in ipairs { ... } do
-          if type(param) ~= 'table' then
-            error(string.format('参数 %d 必须是表类型，实际为 %s', i, type(param)))
-          end
-
-          for k, v in pairs(param) do
-            args[k] = v
-          end
-        end
-
-        builtin.live_grep(args)
-      end
-      vim.keymap.set('n', '<leader>sg', live_grep_wrapper, { desc = '[S]earch by [G]rep' })
-      vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
+      vim.keymap.set('n', '<leader>sa', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
+      vim.keymap.set('n', '<leader>sd', '<cmd>Telescope diagnostics bufnr=0<cr>', { desc = 'Buffer [D]iagnostics' })
+      vim.keymap.set('n', '<leader>sD', builtin.diagnostics, { desc = 'Project [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
+      vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-      vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('n', '<leader>sc', builtin.command_history, { desc = '[C]ommand History' })
+      vim.keymap.set('n', '<leader>sC', builtin.commands, { desc = '[C]ommands' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
@@ -413,7 +415,7 @@ require('lazy').setup({
 
       -- It's also possible to pass additional configuration options.
       --  See `:help telescope.builtin.live_grep()` for information about particular keys
-      vim.keymap.set('n', '<leader>s/', function()
+      vim.keymap.set('n', '<leader>so', function()
         builtin.live_grep {
           grep_open_files = true,
           prompt_title = 'Live Grep in Open Files',
@@ -421,9 +423,22 @@ require('lazy').setup({
       end, { desc = '[S]earch [/] in Open Files' })
 
       -- Shortcut for searching your Neovim configuration files
-      vim.keymap.set('n', '<leader>sn', function()
-        builtin.find_files { cwd = vim.fn.stdpath 'config' }
-      end, { desc = '[S]earch [N]eovim files' })
+      -- vim.keymap.set('n', '<leader>sn', function()
+      --   builtin.find_files { cwd = vim.fn.stdpath 'config' }
+      -- end, { desc = '[S]earch [N]eovim files' })
+
+      vim.keymap.set('n', '<leader>sg', function()
+        builtin.live_grep {
+          -- path_display = 'hidden',
+          wrap_results = true,
+          only_sort_text = true,
+          initial_mode = 'insert',
+          disable_coordinates = true,
+          grep_open_files = true,
+          default_text = '',
+          -- sorting_strategy = 'ascending',
+        }
+      end, { desc = '[S]earch by [G]rep' })
     end,
   },
 
@@ -918,7 +933,21 @@ require('lazy').setup({
       -- - saiw) - [S]urround [A]dd [I]nner [W]ord [)]Paren
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
-      require('mini.surround').setup()
+      vim.api.nvim_set_keymap('v', 'S', '<nop>', { noremap = true })
+      vim.api.nvim_set_keymap('n', 'S', '<nop>', { noremap = true })
+      require('mini.surround').setup {
+        mappings = {
+          add = 'Sa', -- Add surrounding in Normal and Visual modes
+          delete = 'Sd', -- Delete surrounding
+          find = 'Sf', -- Find surrounding (to the right)
+          find_left = 'SF', -- Find surrounding (to the left)
+          highlight = 'Sh', -- Highlight surrounding
+          replace = 'Sr', -- Replace surrounding
+
+          suffix_last = 'l', -- Suffix to search with "prev" method
+          suffix_next = 'n', -- Suffix to search with "next" method
+        },
+      }
 
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,

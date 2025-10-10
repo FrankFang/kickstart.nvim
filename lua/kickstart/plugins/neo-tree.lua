@@ -11,15 +11,22 @@ return {
   },
   lazy = false,
   keys = {
-    { '\\', ':Neotree reveal<CR>', desc = 'NeoTree reveal', silent = true },
+    { '\\', ':Neotree right<CR>', desc = 'NeoTree right', silent = true },
   },
   opts = {
     filesystem = {
+      position = 'right',
       window = {
         mappings = {
           ['\\'] = 'close_window',
         },
       },
+    },
+    buffers = {
+      position = 'right', -- Buffers also on the right
+    },
+    git_status = {
+      position = 'right', -- Git status on the right
     },
   },
 }
